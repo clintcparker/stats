@@ -4,6 +4,9 @@ using Microsoft.Extensions.Hosting;
 using System.CommandLine;
 using System.CommandLine.Binding;
 using System.Text.Json;
+using System.CommandLine.Help;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
 
 public class Program
 {
@@ -22,21 +25,8 @@ public class Program
         //tftools velocities -f ~/Desktop/velocities.csv -x  -c 19  -p 3 -l 2  --pat $AZURE_DEVOPS_PAT --domain DOMAIN --project PROJECT --include "TEAM1,TEAM2"
 
 
-        var optionBinder = new StatsOptionBinder();
 
-        var rootCommand = new RootCommand();
-
-        foreach (var op in optionBinder.OptionList)
-        {
-            rootCommand.AddOption(op);
-        }
-        rootCommand.SetHandler(async (statsOptions) =>
-        {
-            /*await*/
-            Console.WriteLine("Stats!");
-            Console.WriteLine(JsonSerializer.Serialize(statsOptions));
-        },
-        optionBinder);
+        var rootCommand = new StatsCommandBuilder().Build();
         //new StatsOptionBinder(countOption, patOption, instanceOption, projectOption, fileOption));
 
         // var sprintService = new SprintService();
@@ -48,16 +38,111 @@ public class Program
         // }
         // table.Write();
         return await rootCommand.InvokeAsync(args);
+
     }
 }
 
-public class StatsOptions
+public class StatsCommandBuilder
+{
+    public RootCommand Build()
+    {
+        var sprintOptionBinder = new SprintOptionsBinder();
+        var fileOptionBinder = new FileOptionsBinder();
+
+        var rootCommand = new RootCommand();
+
+        foreach (var op in sprintOptionBinder.OptionList)
+        {
+            rootCommand.AddOption(op);
+        }
+        foreach (var op in fileOptionBinder.OptionList)
+        {
+            rootCommand.AddOption(op);
+        }
+        rootCommand.SetHandler(async (statsOptions) =>
+        {
+            /*await*/
+            Console.WriteLine("Stats!");
+            Console.WriteLine(JsonSerializer.Serialize(statsOptions));
+        },
+        sprintOptionBinder);
+        return rootCommand;
+    }
+}
+
+public class FileOptions
+{
+    public string File { get; set; }
+    public bool Overwrite { get; set; }
+}
+
+public class FileOptionsBinder : BinderBase<FileOptions>
+{
+    private static string validatePath(string path){
+        if (string.IsNullOrEmpty(path))
+        { path = defaultFile; }
+        if (path.StartsWith("~"))
+        {
+            path = Path.Join(Environment.GetEnvironmentVariable("HOME"), path.Replace("~", ""));
+        }
+        if (Path.EndsInDirectorySeparator(path))
+        {
+            path = Path.Join(path, "velocities.csv");
+        }
+        if (Path.GetExtension(path) != ".csv")
+        {
+            path = Path.ChangeExtension(path, ".csv");
+        }
+        return path;
+    }
+    private const string defaultFile = "~/Desktop/velocities.csv";
+    public readonly List<Option> OptionList;
+    
+    
+    public readonly Option<string> FileOption = new Option<string>(
+            aliases: new[] { "-f", "--file" },
+            description: "File to write results to",
+            parseArgument: result =>
+                {
+                    return validatePath(result.Tokens.Single().Value);
+                }
+        )
+    { Arity = ArgumentArity.ZeroOrOne, IsRequired = true };
+    
+    public readonly Option<bool> OverwriteOption = new Option<bool>(
+            aliases: new[] { "-x", "--overwrite" },
+            description: "Overwrite file if it exists",
+            getDefaultValue: () => false
+        )
+    { Arity = ArgumentArity.ZeroOrOne };
+
+    
+
+    public FileOptionsBinder()
+    {
+        OverwriteOption.AddValidator(result => {
+            var fileValue = validatePath(result.GetValueForOption(FileOption));
+            if (File.Exists(fileValue) && !result.GetValueForOption(OverwriteOption)){
+                result.ErrorMessage = $" {fileValue} already exists! Specify --overwrite to overwrite existing file";
+            }
+        });
+        FileOption.SetDefaultValue(validatePath(defaultFile));
+        OptionList = new List<Option>() { FileOption, OverwriteOption };
+    }
+    protected override FileOptions GetBoundValue(BindingContext bindingContext) =>
+        new FileOptions
+        {
+            File = bindingContext.ParseResult.GetValueForOption(FileOption)
+        };
+
+}
+
+public class SprintOptions
 {
     public int Count { get; set; }
     public string Pat { get; set; }
     public string Instance { get; set; }
     public string Project { get; set; }
-    public string File { get; set; }
 
     public int PlannedDays { get; set; }
 
@@ -65,29 +150,11 @@ public class StatsOptions
 
     public string[] Teams { get; set; }
 
-    public bool Overwrite { get; set; }
 }
 
-public class StatsOptionBinder : BinderBase<StatsOptions>
+public class SprintOptionsBinder : BinderBase<SprintOptions>
 {
-    private static string validatePath(string path){
-        if (string.IsNullOrEmpty(path))
-                    { path = defaultFile;}
-                    if (path.StartsWith("~"))
-                    {
-                        path = Path.Join(Environment.GetEnvironmentVariable("HOME"), path.Replace("~", ""));
-                    }
-                    if (Path.EndsInDirectorySeparator(path))
-                    {
-                        path = Path.Join(path, "velocities.csv");
-                    }
-                    if (Path.GetExtension(path)!=".csv")
-                    {
-                        path = Path.ChangeExtension(path, ".csv");
-                    }
-                    return path;
-    }
-    private const string defaultFile = "~/Desktop/velocities.csv";
+    private const string patEnvVar = "AZURE_DEVOPS_PAT";
     public readonly List<Option> OptionList;
     public readonly Option<int> CountOption = new Option<int>(
             aliases: new[] { "-c", "--count" },
@@ -95,14 +162,31 @@ public class StatsOptionBinder : BinderBase<StatsOptions>
             getDefaultValue: () => 3
 
         )
-    { Arity = ArgumentArity.ZeroOrOne };
+    { Arity = ArgumentArity.ExactlyOne};
     public readonly Option<string> PATOption = new Option<string>(
             aliases: new[] { "--pat" },
-            description: "Azure DevOps Personal Access Token",
-            getDefaultValue: () => Environment.GetEnvironmentVariable("AZURE_DEVOPS_PAT")
+            description: "Azure DevOps Personal Access Token [default: $AZURE_DEVOPS_PAT]",
+            parseArgument: result =>
+                {
+                    if (result.Tokens.Count == 0)
+                    {
+                        return Environment.GetEnvironmentVariable(patEnvVar);
+                    }
+                    if (!result.Tokens.Any())
+                    {
+                        return Environment.GetEnvironmentVariable(patEnvVar);
+                    }
+                    var pat = result.Tokens.Single().Value;
+                    if (string.IsNullOrEmpty(pat))
+                    {
+                        pat = Environment.GetEnvironmentVariable(patEnvVar);
+                    }
+                    return pat;
+                }
 
         )
-    { Arity = ArgumentArity.ZeroOrOne,IsRequired = true };
+    { Arity = ArgumentArity.ExactlyOne };
+
     public readonly Option<string> InstanceOption = new Option<string>(
             aliases: new[] { "--instance", "--domain" },
             description: "Azure DevOps Domain",
@@ -119,27 +203,18 @@ public class StatsOptionBinder : BinderBase<StatsOptions>
 
         )
     { Arity = ArgumentArity.ExactlyOne, IsRequired = true };//TODO support multiple projects
-    public readonly Option<string> FileOption = new Option<string>(
-            aliases: new[] { "-f", "--file" },
-            description: "File to write results to",
-            parseArgument: result =>
-                {
-                    
-                    return validatePath(result.Tokens.Single().Value);
-                }
-        )
-    { Arity = ArgumentArity.ZeroOrOne, IsRequired = true };
+
 
     public readonly Option<int> PlannedDaysOption = new Option<int>(
             aliases: new[] { "-p", "--planned" },
-            description: "Number of days to plan for",
+            description: "Extra days to count from the start of the sprint for planned work",
             getDefaultValue: () => 3
         )
     { Arity = ArgumentArity.ZeroOrOne };
 
     public readonly Option<int> LateDaysOption = new Option<int>(
             aliases: new[] { "-l", "--late" },
-            description: "Number of days to consider late",
+            description: "Extra days to count from the end of the sprint for late work",
             getDefaultValue: () => 2
         )
     { Arity = ArgumentArity.ZeroOrOne };
@@ -148,20 +223,20 @@ public class StatsOptionBinder : BinderBase<StatsOptions>
             aliases: new[] { "-t", "--teams", "--include" },
             description: "Teams to include"
         );
+
+
     
-    public StatsOptionBinder()
+    public SprintOptionsBinder()
     {
-        FileOption.SetDefaultValue(validatePath(defaultFile));
-        OptionList = new List<Option>() { CountOption, PATOption, InstanceOption, ProjectOption, FileOption, PlannedDaysOption, LateDaysOption, TeamsOption };
+        OptionList = new List<Option>() { PATOption, CountOption , InstanceOption, ProjectOption, PlannedDaysOption, LateDaysOption, TeamsOption };
     }
-    protected override StatsOptions GetBoundValue(BindingContext bindingContext) =>
-        new StatsOptions
+    protected override SprintOptions GetBoundValue(BindingContext bindingContext) =>
+        new SprintOptions
         {
             Count = bindingContext.ParseResult.GetValueForOption(CountOption),
-            Pat = bindingContext.ParseResult.GetValueForOption(PATOption),
+            Pat = bindingContext.ParseResult.GetValueForOption(PATOption) ?? Environment.GetEnvironmentVariable(patEnvVar),
             Instance = bindingContext.ParseResult.GetValueForOption(InstanceOption),
             Project = bindingContext.ParseResult.GetValueForOption(ProjectOption),
-            File = bindingContext.ParseResult.GetValueForOption(FileOption),
             PlannedDays = bindingContext.ParseResult.GetValueForOption(PlannedDaysOption),
             LateDays = bindingContext.ParseResult.GetValueForOption(LateDaysOption),
             Teams = bindingContext.ParseResult.GetValueForOption(TeamsOption)
