@@ -7,7 +7,7 @@ using System.Collections.Specialized;
 public class LoggingHandler : DelegatingHandler
 {
 
-     private readonly bool _logRequestAndResponse = false;
+    private readonly bool _logRequestAndResponse = false;
     public LoggingHandler(HttpMessageHandler innerHandler)
         : base(innerHandler)
     {

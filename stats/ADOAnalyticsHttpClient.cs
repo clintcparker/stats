@@ -15,7 +15,5 @@ using System.Collections.Specialized;
                             string.Format("{0}:{1}", "", PAT))));
             this.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             this.DefaultRequestHeaders.Host = "analytics.dev.azure.com";
-        }
-
-        
+        }   
     }
