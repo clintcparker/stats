@@ -478,3 +478,4 @@ $RECYCLE.BIN/
 
 #repo specific
 cache/
+lcov.info

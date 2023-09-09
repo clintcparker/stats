@@ -85,8 +85,6 @@ public class Tests
         var callArgs = new List<SprintOptions>();
         var ssf = new Mock<ISprintServiceFactory>(){ CallBase = true };
         var ss = new Mock<SprintService>(){ CallBase = true };
-        //ssf.Verify(x=>x.createSprintService(It.Is<SprintOptions>(x=>x.Instance == "mydomain")), Times.Never);
-        // ssf.Verify(x=>x.createSprintService(It.Is<SprintOptions>(x=>x.Instance != "mydomain")), Times.Once);
         ssf.Setup(x=>x.createSprintService(It.IsAny<SprintOptions>())).Callback<SprintOptions>((options)=>callArgs.Add(options)).Returns(ss.Object);
         var statsBuilder = new stats.StatsCommandBuilder(ssf.Object);
         var command = statsBuilder.Build();
@@ -94,5 +92,19 @@ public class Tests
         Assert.AreEqual(0, result);
         Assert.AreEqual(1, callArgs.Count);
         Assert.AreEqual("mydomainx", callArgs[0].Instance);
+    }
+
+    [Test]
+    public async Task HandlerIsntInvokedWithBadCommand()
+    {
+        var callArgs = new List<SprintOptions>();
+        var ssf = new Mock<ISprintServiceFactory>(){ CallBase = true };
+        var ss = new Mock<SprintService>(){ CallBase = true };
+        ssf.Verify(x=>x.createSprintService(It.IsAny<SprintOptions>()), Times.Never);
+        ssf.Setup(x=>x.createSprintService(It.IsAny<SprintOptions>())).Callback<SprintOptions>((options)=>callArgs.Add(options)).Returns(ss.Object);
+        var statsBuilder = new stats.StatsCommandBuilder(ssf.Object);
+        var command = statsBuilder.Build();
+        var result =  command.Invoke("--instance https://dev.azure.com/mydomain --project myproj ");
+        Assert.AreEqual(0, callArgs.Count);
     }
 }
