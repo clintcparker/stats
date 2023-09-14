@@ -35,7 +35,8 @@
 				"ryanluker.vscode-coverage-gutters",
 				"GitHub.copilot",
 				"ms-dotnettools.vscodeintellicode-csharp",
-				"ms-vsliveshare.vsliveshare"
+				"ms-vsliveshare.vsliveshare",
+				"ginfuru.ginfuru-better-solarized-dark-theme"
 			]
         }
 	}//,
