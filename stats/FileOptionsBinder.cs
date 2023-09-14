@@ -7,7 +7,7 @@ public class FileOptionsBinder : BinderBase<FileOptions>
         { path = defaultFile; }
         if (path.StartsWith("~"))
         {
-            path = Path.Join(Environment.GetEnvironmentVariable("HOME"), path.Replace("~", ""));
+            path = Path.Join(Container.GetService<ISystemHelpers>().GetEnvironmentVariable("HOME"), path.Replace("~", ""));
         }
         if (Path.EndsInDirectorySeparator(path))
         {
@@ -45,7 +45,7 @@ public class FileOptionsBinder : BinderBase<FileOptions>
     {
         OverwriteOption.AddValidator(result => {
             var fileValue = validatePath(result.GetValueForOption(FileOption));
-            if (File.Exists(fileValue) && !result.GetValueForOption(OverwriteOption)){
+            if (Container.GetService<ISystemHelpers>().Exists(fileValue) && !result.GetValueForOption(OverwriteOption)){
                 result.ErrorMessage = $" {fileValue} already exists! Specify --overwrite to overwrite existing file";
             }
         });

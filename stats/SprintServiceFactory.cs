@@ -9,7 +9,7 @@ public class SprintServiceFactory : ISprintServiceFactory {
     {
         _httpClient= httpClient;
     }
-    public SprintService createSprintService(SprintOptions options)
+    public ISprintService createSprintService(SprintOptions options)
     {
         return new SprintService(options, _httpClient);
     }

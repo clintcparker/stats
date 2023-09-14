@@ -152,8 +152,9 @@ public class SprintService : ISprintService
     public async Task<List<Team>> getTeamsForProject(string projectId)
     {
         var path = $"{OptionInstance}/{projectId}{TEAMS_PATH}";
+        //var teams = new List<Team>();
         var teams = await analyticsClient.GetFromJsonAsync<ADOResponse<Team>>(path);
-        return teams.value;
+        return teams.GetValue();
     }
 
 

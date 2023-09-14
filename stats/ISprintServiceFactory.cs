@@ -1,5 +1,5 @@
 namespace stats;
 
 public interface ISprintServiceFactory {
-    public SprintService createSprintService(SprintOptions options);
+    public ISprintService createSprintService(SprintOptions options);
 }

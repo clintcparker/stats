@@ -1,19 +1,20 @@
 namespace stats; 
 public class StatsCommandBuilder : ICommandBuilder
 {
-    private readonly ISprintServiceFactory _sprintServiceFactory;
-    public StatsCommandBuilder(ISprintServiceFactory sprintServiceFactory)
+    private readonly IStatsCommandHandler _statsCommandHandler;
+    private readonly SprintOptionsBinder _sprintOptionsBinder;
+    public StatsCommandBuilder(IStatsCommandHandler statsCommandHandler, SprintOptionsBinder sprintOptionsBinder)
     {
-        _sprintServiceFactory = sprintServiceFactory;
+        _statsCommandHandler = statsCommandHandler;
+        _sprintOptionsBinder = sprintOptionsBinder;
     }
     public RootCommand Build()
     {
-        var sprintOptionBinder = new SprintOptionsBinder();
         var fileOptionBinder = new FileOptionsBinder();
 
         var rootCommand = new RootCommand();
 
-        foreach (var op in sprintOptionBinder.OptionList)
+        foreach (var op in _sprintOptionsBinder.OptionList)
         {
             rootCommand.AddOption(op);
         }
@@ -21,16 +22,13 @@ public class StatsCommandBuilder : ICommandBuilder
         {
             rootCommand.AddOption(op);
         }
-        rootCommand.SetHandler(async (statsOptions) =>
-        {
-            /*await*/
-            var sprintService = _sprintServiceFactory.createSprintService(statsOptions);
-            Console.WriteLine("Stats!");
-            Console.WriteLine(JsonSerializer.Serialize(statsOptions));
-        },
-        sprintOptionBinder);
+        rootCommand.SetHandler<SprintOptions,FileOptions>(_statsCommandHandler.Handler,
+        _sprintOptionsBinder,fileOptionBinder);
         return rootCommand;
     
     
     }
+
+
+
 }
