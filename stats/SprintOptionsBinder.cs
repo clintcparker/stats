@@ -58,6 +58,7 @@ public class SprintOptionsBinder : BinderBase<SprintOptions>
     private void StringValueRequired(OptionResult result)
     {
         var stringValue = result.GetValueOrDefault<string>();
+        result.Token.IsNotNull();
         if (String.IsNullOrWhiteSpace(stringValue) && result.Token.Value != null){
             result.ErrorMessage = $"Required argument missing for option: '{result.Token.Value}'.";
         }
@@ -71,15 +72,18 @@ public class SprintOptionsBinder : BinderBase<SprintOptions>
         OptionList = new List<Option>() { PATOption, CountOption , InstanceOption, ProjectOption, PlannedDaysOption, LateDaysOption, TeamsOption };
     }
 
-    protected override SprintOptions GetBoundValue(BindingContext bindingContext) =>
-        new SprintOptions
+    protected override SprintOptions GetBoundValue(BindingContext bindingContext)
+    {
+        bindingContext.ParseResult.IsNotNull();
+        return new SprintOptions
         {
             Count = bindingContext.ParseResult.GetValueForOption(CountOption),
             Pat = bindingContext.ParseResult.GetValueForOption(PATOption) ?? Container.GetService<ISystemHelpers>().GetEnvironmentVariable(patEnvVar),
-            Instance = bindingContext.ParseResult.GetValueForOption(InstanceOption),
-            Project = bindingContext.ParseResult.GetValueForOption(ProjectOption),
             PlannedDays = bindingContext.ParseResult.GetValueForOption(PlannedDaysOption),
             LateDays = bindingContext.ParseResult.GetValueForOption(LateDaysOption),
+            Instance = bindingContext.ParseResult.GetValueForOption(InstanceOption),
+            Project = bindingContext.ParseResult.GetValueForOption(ProjectOption),
             Teams = bindingContext.ParseResult.GetValueForOption(TeamsOption)
         };
+    }
 }

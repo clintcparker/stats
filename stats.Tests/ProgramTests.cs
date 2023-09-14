@@ -1,10 +1,5 @@
 
-global using Microsoft.Extensions.DependencyInjection;
-global using Microsoft.Extensions.Hosting;
-global using Microsoft.Extensions.DependencyInjection.Extensions;
-global using stats;
-global using Moq;
-global using System.Text.Json;
+
 using System.CommandLine;
 using System.CommandLine.Binding;
 using System.CommandLine.Help;

@@ -29,22 +29,6 @@ public class SprintService : ISprintService
         this.analyticsClient = httpClient;
         SetUpHttpClient(OptionPAT);
     }
-    public SprintService()
-    {
-        this.OptionProjectName = "ClockShark";
-        this.OptionInstance = "clockshark";
-        this.OptionTeams = new List<string> { "Cuckoo" };
-        this.analyticsClient = new ADOAnalyticsHttpClient(OptionPAT);
-    }
-
-    // public SprintService(object options)
-    // {
-    //     this.OptionProjectName = options.ProjectName;
-    //     this.OptionInstance = options.Instance;
-    //     this.OptionTeams = options.Teams;
-    //     this.OptionPAT = options.PAT;
-    //     this.analyticsClient = new ADOAnalyticsHttpClient(OptionPAT);
-    // }
 
     public void SetUpHttpClient(string PAT)
     {

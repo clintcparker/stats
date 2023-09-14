@@ -13,4 +13,9 @@ public class SprintOptions
 
     public string[] Teams { get; set; }
 
+    public SprintOptions()
+    {
+        Teams = new string[] { };
+    }
+
 }
